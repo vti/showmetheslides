@@ -1,0 +1,42 @@
+Installation
+
+To check out the code and clone dependencies:
+
+git clone git://github.com/vti/showmetheslides.git
+cd showmetheslides
+git submodule update --init
+
+
+Running
+
+For non websocket native browsers, you need a flash policy server running (port
+843, so it needs to run as root)
+
+sudo ./script/flash-policy-server &
+
+Documentation
+
+This is a slideshow presentation software. It allows not only to show slides,
+but also to connect from other computers in the network and watch the slides as
+they change. This could be useful when no projector is available or just for
+fun.
+
+There is also a simple 140 characters limited chat.
+
+If you login (default password is 'websockets!') you can change slides using
+Space, Arrows, Home and End buttons. Other users can only watch and chat.
+
+Communication between client and server is done via WebSockets. For JavaScript
+abstraction JQuery is used. Server software is build on top of Mojolicous
+framework.
+
+Credits
+
+* Sebastian Riedel for Mojolicious
+  http://github.com/kraih/mojo.git
+
+* David Davis for useful websocket examples
+  http://github.com/xantus/mojo-websocket-examples
+
+* gimite for Flash workaround for non websocket native browsers
+  http://github.com/gimite/web-socket-js

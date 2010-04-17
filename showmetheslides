@@ -1,0 +1,441 @@
+#!/usr/bin/perl
+
+BEGIN { require FindBin; use lib "$FindBin::Bin/../mojo/lib"; }
+
+use Mojolicious::Lite;
+use Mojo::JSON;
+
+@ARGV = qw/daemon/ unless @ARGV;
+
+my $config =
+  plugin 'json_config' => {default => {access_password => 'websockets!'}};
+
+my $clients = {};
+my $slides  = _read_slides('showmetheslides.pod');
+my $total   = @$slides;
+my $current = 0;
+my $chat = [];
+
+ladder sub {
+    my $self = shift;
+
+    if ($self->session->{logged_in}) {
+        $self->stash(logged_in => 1);
+    }
+
+    return 1;
+};
+
+websocket '/' => sub {
+    my $self = shift;
+    my $tx = $self->tx;
+
+    my $is_logged_in = $self->stash('logged_in');
+
+    my $cid = "$tx";
+
+    $clients->{$cid} = $tx;
+
+    my $total_clients = keys %$clients;
+    my $ip = $tx->remote_address;
+    app->log->debug("Client '$ip' connected [$total_clients]");
+
+    $self->send_json({type => 'message', content => 'Connected'});
+
+    $self->send_json(
+        {type => 'status', content => {current => $current, total => $total}}
+    );
+
+    broadcast_chat();
+
+    my $slide = _get_slide($current);
+    $slide->{content} ||= <<EOF;
+Presentation is not yet started.
+EOF
+    $self->send_json({type => 'slide', content => $slide});
+
+    broadcast_status(clients => $total_clients);
+
+    $self->receive_message(
+        sub {
+            my ($self, $message) = @_;
+
+            my $json = Mojo::JSON->new;
+
+            $message = $json->decode($message);
+            return unless $message || $json->error;
+
+            my $action = $message->{action} || '';
+
+            if ($action eq 'chat') {
+                app->log->debug("Received chat message");
+
+                # Don't ever trust clients
+                push @$chat, substr($message->{content}, 0, 139);
+                shift @$chat while @$chat > 5;
+
+                broadcast_chat();
+            }
+            elsif ($is_logged_in) {
+                app->log->debug("Message '$action' from manager received");
+
+                my $slide;
+                if ($action eq 'first') {
+                    $current = 1;
+                    $slide = _get_slide($current);
+                }
+                elsif ($action eq 'last') {
+                    $current = $total;
+                    $slide = _get_slide($total);
+                }
+                elsif ($action eq 'next') {
+                    $current++ unless $current >= $total;
+                    $slide = _get_slide($current);
+                }
+                elsif ($action eq 'prev') {
+                    $current-- unless $current <= 1;
+                    $slide = _get_slide($current);
+                }
+
+                if ($slide) {
+                    broadcast_status(current => $current);
+                    broadcast_slide($slide);
+                }
+            }
+        }
+    );
+
+    $self->finished(
+        sub {
+            delete $clients->{$cid};
+
+            my $total_clients = keys %$clients;
+            broadcast_status(clients => $total_clients);
+
+            app->log->debug('Client disconnected');
+        }
+    );
+};
+
+get '/' => 'index';
+
+get '/login' => 'login';
+post '/login' => sub {
+    my $self = shift;
+
+    my $password = $self->param('password');
+
+    if ($password) {
+        if ($password eq $config->{access_password}) {
+            $self->session(logged_in => 1);
+
+            return $self->redirect_to('index');
+        }
+        else {
+            $self->stash(error => 'Password is wrong');
+        }
+    }
+    else {
+        $self->stash(error => 'Password is required');
+    }
+} => 'login';
+
+get '/logout' => sub {
+    my $self = shift;
+
+    if ($self->stash('logged_in')) {
+        $self->session->{logged_in} = undef;
+        return $self->redirect_to('index');
+    }
+    else {
+        return $self->render_not_found;
+    }
+};
+
+sub broadcast {
+    my $data = shift;
+
+    foreach my $cid (keys %$clients) {
+        $clients->{$cid}->send_json($data);
+    }
+}
+
+sub broadcast_chat {
+    return unless @$chat;
+
+    broadcast(
+        {type => 'chat', content => "&#155; " . join("<br /> &#155; ", @$chat)});
+}
+
+sub broadcast_status {
+    broadcast({type => 'status', content => {@_}});
+}
+
+sub broadcast_slide {
+    broadcast(@_);
+}
+
+sub _read_slides {
+    my $filename = shift;
+
+    $filename = app->home->rel_file($filename);
+    open my $file, "<:encoding(UTF-8)", $filename
+      or die "Can't read slides from $filename: $!";
+    my $slurp = do { local $/; <$file> };
+
+    $slurp = "${slurp}[[[ ]]]";
+
+    my @slides;
+    while ($slurp =~ s/\[\[\[(.*?)\]\]\](.*?)(?=\[\[\[)//s) {
+        my $type = 'text';
+        my $name = $1;
+        my $content = $2;
+
+        $name =~ s/^\s+//;
+        $name =~ s/\s+$//;
+
+        $content =~ s/^\s+//;
+        $content =~ s/\s+$//;
+
+        my $slide = {};
+
+        if ($content =~ s/^Link: (.*)//) {
+            $type = 'link';
+
+            $slide->{link} = $1;
+        }
+
+        $slide->{name} = $name;
+        $slide->{type} = $type;
+        $slide->{content} = $content;
+
+        push @slides, $slide;
+    }
+
+    return \@slides;
+}
+
+sub _get_slide {
+    my $number = shift;
+
+    if ($number > 0 && $number <= @$slides) {
+        my $slide = $slides->[$number - 1];
+        return $slide;
+    }
+
+    return;
+}
+
+
+# see script/flash-policy-server
+print "Remember, you need to also run script/flash-policy-server as root for this to work...\n";
+
+app->start;
+
+1;
+
+__DATA__
+
+@@ index.html.ep
+% layout 'wrapper';
+Please, enable JavaScript.<br /><br />
+
+If your browser doesn't support Websockets,<br />
+make sure you have Flash<br />
+installed. It is used as workaround.
+
+@@ login.html.ep
+% layout undef;
+
+<form method="post">
+<input type="password" name="password" /><br />
+% if (my $error = stash 'error') {
+<div class="error"><%= $error %></div>
+% }
+<input type="submit" value="Login" />
+</form>
+
+@@ layouts/wrapper.html.ep
+% my $url = $self->req->url->to_abs->scheme($self->req->is_secure ? 'wss' : 'ws')->path('/');
+<!doctype html><html>
+    <head>
+        <title>Presentation</title>
+        <link rel="stylesheet" href="/main.css" type="text/css" />
+        <script type="text/javascript" src="/jquery.min.js"></script>
+        <script type="text/javascript" src="/jquery.simplyCountable.js"></script>
+        <script type="text/javascript">
+            // Only load the flash fallback when needed
+            if (!('WebSocket' in window)) {
+                document.write([
+                    '<scr'+'ipt type="text/javascript" src="web-socket-js/swfobject.js"></scr'+'ipt>',
+                    '<scr'+'ipt type="text/javascript" src="web-socket-js/FABridge.js"></scr'+'ipt>',
+                    '<scr'+'ipt type="text/javascript" src="web-socket-js/web_socket.js"></scr'+'ipt>'
+                ].join(''));
+            }
+        </script>
+        <script type="text/javascript">
+            if (WebSocket.__initialize) {
+                // Set URL of your WebSocketMain.swf here:
+                WebSocket.__swfLocation = 'web-socket-js/WebSocketMain.swf';
+            }
+
+            var ws;
+            var connected = false;
+
+            function init() {
+                connected = false;
+                displayMessage('Connecting...');
+
+                // Connect to WebSocket
+                ws = new WebSocket('<%= $url %>');
+
+                ws.onerror = function(e) {
+                    displayMessage("Error: " + e);
+                };
+
+                // Set event handlers
+                ws.onopen = function() {
+                    connected = true;
+                    displayMessage('Connected. Loading...');
+                };
+
+                ws.onmessage = function(e) {
+                    var data = JSON.parse(e.data);
+
+                    if (data == null) {
+                    }
+                    else if (data.type == 'message') {
+                        displayMessage(data.content);
+                    }
+                    else if (data.type == 'slide') {
+                        displayMessage(data.content.content);
+                    }
+                    else if (data.type == 'status') {
+                        var content = data.content;
+                        if (content.clients != null) {
+                            $('#clients_status').html(content.clients);
+                        }
+                        if (content.current != null) {
+                            $('#current_status').html(content.current);
+                        }
+                        if (content.total != null) {
+                            $('#total_status').html(content.total);
+                        }
+                    }
+                    else if (data.type == 'chat') {
+                        $('#chat-text').html(data.content);
+                    }
+                };
+
+                ws.onclose = function() {
+                    displayMessage('Disconnected. <a href="/">Reconnect</a>');
+                }
+            }
+
+            function displayMessage(msg) {
+                $('#slide').html(msg);
+            }
+
+            $(document).ready(function() {
+                $('#chat-input').simplyCountable({
+                    counter: '#counter',
+                    countable: 'characters',
+                    maxCount: 140,
+                    strictMax: true,
+                    countDirection: 'down'
+                });
+
+                $('#chat-form').submit(function() {
+                    var message = $('#chat-input').val().substring(0, 140);
+                    if (message != null && message != '') {
+                        ws.send('{"action":"chat","content":"' + message + '"}');
+                        $('#chat-input').val('');
+                    }
+                    return false;
+                });
+
+% if (stash 'logged_in') {
+                $('#chat-input').bind('keypress', function(e) {
+                    e.stopPropagation();
+                });
+
+                $(document).keypress(function(e) {
+                    var code = (e.keyCode ? e.keyCode : e.which);
+
+                    // Right Arrow or Space
+                    if (code == '39' || code == '32') {
+                        nextSlide();
+                    }
+
+                    // Left Arrow
+                    else if (code == '37') {
+                        prevSlide();
+                    }
+
+                    // Home
+                    else if (code == '36') {
+                        firstSlide();
+                    }
+
+                    // End
+                    else if (code == '35') {
+                        lastSlide();
+                    }
+                });
+% }
+
+                init();
+            });
+
+% if (stash 'logged_in') {
+            function nextSlide() {
+                ws.send('{"action":"next"}');
+            }
+
+            function prevSlide() {
+                ws.send('{"action":"prev"}');
+            }
+
+            function firstSlide() {
+                ws.send('{"action":"first"}');
+            }
+
+            function lastSlide() {
+                ws.send('{"action":"last"}');
+            }
+% }
+
+            function sendChatMessage() {
+                //var message = input.value.substring(0, 140);
+                alert(message);
+
+                //ws.send('{"action":"chat","content":"' + message + '"}');
+                //input.value = '';
+            }
+        </script>
+    </head>
+    <body>
+        <div id="status">
+            clients: <span id="clients_status">n/a</span><br />
+            slides: <span id="current_status">n/a</span> / 
+            <span id="total_status">n/a</span>
+        </div>
+        <div class="container">
+            <table border="0" height="100%" style="margin:auto">
+            <tr><td style="vertical-align:middle">
+                <div id="slide">
+                    <%== content %>
+                </div>
+            </td></tr>
+            </table>
+        </div>
+        <div id="chat">
+            <div id="chat-text"></div>
+            <form id="chat-form">
+            <div id="chat-input-block">
+            <input id="chat-input" name="input" />&nbsp;<span id="counter"></span>
+            </div>
+            </form>
+        </div>
+    </body>
+</html>

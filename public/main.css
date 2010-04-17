@@ -1,0 +1,57 @@
+.container, html, body {
+    margin:0px;
+    height: 100%; /* IE treats as min-height */
+    min-height: 100%; /* IE ignores this */
+}
+
+#slide {
+    /*width:80%;*/
+    margin:auto;
+    padding:1em;
+    /*background:red;*/
+    /*width:800px;*/
+    /*height:500px;*/
+    /*height:100%;*/
+}
+
+#status {
+    background:#000;
+    color:#fff;
+    font-weight:bold;
+    text-align:center;
+    padding:0.5em;
+    position:absolute;
+    left:0px;
+    top:0px;
+    z-index:2;
+}
+
+#chat {
+    background:#ddd;
+    font-size:small;
+    color:#999;
+    padding:0.5em;
+    position:absolute;
+    right:0px;
+    bottom:0px;
+    z-index:2;
+    width:250px;
+    overflow:hidden;
+}
+
+#chat-input {
+}
+
+#chat-input-block {
+    text-align:right;
+    padding-top:0.5em;
+    border-top:1px solid #999;
+}
+
+.center {
+    text-align:center;
+}
+
+.small {
+    font-size:small;
+}
