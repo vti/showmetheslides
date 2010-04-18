@@ -265,6 +265,7 @@ installed. It is used as workaround.
         <title>Presentation</title>
         <link rel="stylesheet" href="/main.css" type="text/css" />
         <script type="text/javascript" src="/jquery.min.js"></script>
+        <script type="text/javascript" src="/jquery.json.min.js"></script>
         <script type="text/javascript" src="/jquery.simplyCountable.js"></script>
         <script type="text/javascript">
             // Only load the flash fallback when needed
@@ -303,7 +304,7 @@ installed. It is used as workaround.
                 };
 
                 ws.onmessage = function(e) {
-                    var data = JSON.parse(e.data);
+                    var data = $.evalJSON(e.data);
 
                     if (data == null) {
                     }
