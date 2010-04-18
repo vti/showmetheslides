@@ -351,7 +351,7 @@ installed. It is used as workaround.
                 $('#chat-form').submit(function() {
                     var message = $('#chat-input').val().substring(0, 140);
                     if (message != null && message != '') {
-                        ws.send('{"action":"chat","content":"' + message + '"}');
+                        ws.send('{"action":"chat","content":"' + toUTF(message) + '"}');
                         $('#chat-input').val('');
                     }
                     return false;
@@ -390,6 +390,30 @@ installed. It is used as workaround.
                 init();
             });
 
+            function toUTF(string) {
+                string = string.replace(/\r\n/g, "\n");
+                var utftext = "";
+
+                for (var n = 0; n < string.length; n++) {
+                    var c = string.charCodeAt(n);
+
+                    if (c < 128) {
+                        utftext += String.fromCharCode(c);
+                    }
+                    else if((c > 127) && (c < 2048)) {
+                        utftext += String.fromCharCode((c >> 6) | 192);
+                        utftext += String.fromCharCode((c & 63) | 128);
+                    }
+                    else {
+                        utftext += String.fromCharCode((c >> 12) | 224);
+                        utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+                        utftext += String.fromCharCode((c & 63) | 128);
+                    }
+                }
+
+                return utftext;
+            }
+
 % if (stash 'logged_in') {
             function nextSlide() {
                 ws.send('{"action":"next"}');
@@ -407,14 +431,6 @@ installed. It is used as workaround.
                 ws.send('{"action":"last"}');
             }
 % }
-
-            function sendChatMessage() {
-                //var message = input.value.substring(0, 140);
-                alert(message);
-
-                //ws.send('{"action":"chat","content":"' + message + '"}');
-                //input.value = '';
-            }
         </script>
     </head>
     <body>
