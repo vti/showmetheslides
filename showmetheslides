@@ -172,7 +172,7 @@ sub broadcast_status {
 }
 
 sub broadcast_slide {
-    broadcast(@_);
+    broadcast({type => 'slide', content => shift});
 }
 
 sub _read_slides {
