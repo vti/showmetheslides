@@ -40,3 +40,8 @@ Credits
 
 * gimite for Flash workaround for non websocket native browsers
   http://github.com/gimite/web-socket-js
+
+Issues
+
+* Windows users check you firewall or antivirus packet filtering when you are
+  not able to send websocket messages, but receive them just fine
