@@ -72,7 +72,9 @@ EOF
                 app->log->debug("Received chat message");
 
                 # Don't ever trust clients
-                push @$chat, substr($message->{content}, 0, 139);
+                push @$chat,
+                  Mojo::ByteStream->new(substr($message->{content}, 0, 139))
+                  ->xml_escape;
                 shift @$chat while @$chat > 5;
 
                 broadcast_chat();
