@@ -41,6 +41,15 @@ Credits
 * gimite for Flash workaround for non websocket native browsers
   http://github.com/gimite/web-socket-js
 
+* JQuery team for JQuery
+  http://jquery.com
+
+* Brantley Harris for JQuery JSON plugin
+  http://code.google.com/p/jquery-json/
+
+* Aaron Russel for JQuery SimpleCountable plugin
+  http://github.com/aaronrussell/jquery-simply-countable/tree
+
 Issues
 
 * Windows users check you firewall or antivirus packet filtering when you are
