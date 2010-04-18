@@ -3,4 +3,4 @@
 	url = git://github.com/gimite/web-socket-js.git
 [submodule "mojo"]
 	path = mojo
-	url = git://github.com/kraih/mojo.git
+	url = git://github.com/vti/mojo.git
