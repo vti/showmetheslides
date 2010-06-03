@@ -12,7 +12,7 @@ use Text::Markdown;
 my $slides_file = pop @ARGV;
 
 my $config =
-  plugin 'json_config' => {default => {addresses => [qw/127.0.0.1/]}};
+  plugin 'json_config' => {default => {password => '123456'}};
 
 plugin 'web_socket-chat' => {path => '/chat'};
 
@@ -122,15 +122,34 @@ get '/' => sub {
     $self->stash(speaker => _is_speaker($self));
 } => 'index';
 
+any '/login' => sub {
+    my $self = shift;
+
+    return unless $self->req->method eq 'POST';
+
+    my $password = $self->param('password');
+
+    return $self->render_text('Sorry')
+      unless $password && $password eq $config->{password};
+
+    $self->session->{speaker} = 1;
+
+    return $self->redirect_to('/');
+} => 'login';
+
+get '/logout' => sub {
+    my $self = shift;
+
+    delete $self->session->{speaker};
+
+    return $self->redirect_to('/');
+};
+
 sub _is_speaker {
     my $self = shift;
     my $tx   = $self->tx;
 
-    my $remote_address = $tx->remote_address;
-
-    my $found = grep { $_ eq $remote_address } @{$config->{addresses}};
-
-    return $found ? 1 : 0;
+    return $self->session->{speaker};
 }
 
 sub _get_id {
@@ -240,6 +259,11 @@ Please, enable JavaScript.<br /><br />
 If your browser doesn't support Websockets,<br />
 make sure you have Flash<br />
 installed. It is used as workaround.
+
+@@ login.html.ep
+<form action="/login" method="post">
+<input type="password" name="password" />
+</form>
 
 @@ layouts/wrapper.html.ep
 <!doctype html><html>
