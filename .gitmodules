@@ -4,3 +4,6 @@
 [submodule "mojo"]
 	path = mojo
 	url = git://github.com/vti/mojo.git
+[submodule "mojolicious-plugin-websocket-chat"]
+	path = mojolicious-plugin-websocket-chat
+	url = http://github.com/vti/mojolicious-plugin-websocket-chat.git

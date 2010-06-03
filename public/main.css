@@ -38,6 +38,10 @@ pre {
     text-align:left;
 }
 
+.achtung {
+    color:red;
+}
+
 #status {
     background:#000;
     color:#fff;
@@ -46,6 +50,16 @@ pre {
     position:absolute;
     left:0px;
     top:0px;
+    z-index:2;
+}
+
+#chat {
+    background:#000;
+    color:#fff;
+    padding:0.5em;
+    position:absolute;
+    right:0px;
+    bottom:0px;
     z-index:2;
 }
 

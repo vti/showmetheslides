@@ -2,6 +2,7 @@
 
 use FindBin;
 use lib "$FindBin::Bin/mojo/lib";
+use lib "$FindBin::Bin/mojolicious-plugin-websocket-chat/lib";
 
 use Mojo::ByteStream;
 use Mojo::JSON;
@@ -12,6 +13,8 @@ my $slides_file = shift @ARGV;
 
 my $config =
   plugin 'json_config' => {default => {addresses => [qw/127.0.0.1/]}};
+
+plugin 'web_socket-chat' => {path => '/chat'};
 
 my $CLIENTS = {};
 my $SLIDES  = _read_slides($slides_file);
@@ -114,6 +117,7 @@ get '/' => sub {
     $url->query->params([]);
 
     $self->stash(websocket_url => $url->to_abs);
+    $self->stash(websocket_chat_url => $url->path('/chat')->to_abs);
 
     $self->stash(speaker => _is_speaker($self));
 } => 'index';
@@ -246,6 +250,7 @@ installed. It is used as workaround.
 
         <script type="text/javascript" src="/jquery.min.js"></script>
         <script type="text/javascript" src="/jquery.json.min.js"></script>
+        <script type="text/javascript" src="/websocketChat.js"></script>
         <script type="text/javascript" src="/websocketPresentation.js"></script>
         <script type="text/javascript">
             // Only load the flash fallback when needed
@@ -268,6 +273,17 @@ installed. It is used as workaround.
                     "url":"<%= stash 'websocket_url' %>",
                     "speaker":"<%= stash 'speaker' %>"
                 });
+
+                $('#chat').websocketChat({"url":"<%= stash 'websocket_chat_url' %>"});
+
+                JQuery('#websocket-chat-input').bind('keypress', function(e) {
+                    e.stopPropagation();
+                });
+
+                JQuery('#websocket-chat-input').bind('keydown', function(e) {
+                    e.stopPropagation();
+                });
+
             });
         </script>
     </head>
@@ -277,6 +293,7 @@ installed. It is used as workaround.
             slides: <span id="websocket-presentation-current">n/a</span> / 
             <span id="websocket-presentation-total">n/a</span>
         </div>
+        <div id="chat"></div>
         <div class="container">
             <table border="0" height="100%" style="margin:auto">
             <tr><td style="vertical-align:middle">
