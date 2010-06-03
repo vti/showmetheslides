@@ -9,7 +9,7 @@ use Mojo::JSON;
 use Mojolicious::Lite;
 use Text::Markdown;
 
-my $slides_file = shift @ARGV;
+my $slides_file = pop @ARGV;
 
 my $config =
   plugin 'json_config' => {default => {addresses => [qw/127.0.0.1/]}};
@@ -227,7 +227,7 @@ sub _get_slide {
 #print
 #  "Remember, you need to also run script/flash-policy-server as root for this to work...\n";
 
-app->start('daemon');
+app->start('daemon', @ARGV);
 
 1;
 
