@@ -3,16 +3,18 @@
 use FindBin;
 use lib "$FindBin::Bin/mojo/lib";
 
-use Mojolicious::Lite;
+use Mojo::ByteStream;
 use Mojo::JSON;
+use Mojolicious::Lite;
+use Text::Markdown;
 
-@ARGV = qw/daemon/ unless @ARGV;
+my $slides_file = shift @ARGV;
 
 my $config =
   plugin 'json_config' => {default => {addresses => [qw/127.0.0.1/]}};
 
 my $CLIENTS = {};
-my $SLIDES  = _read_slides('showmetheslides.pod');
+my $SLIDES  = _read_slides($slides_file);
 my $TOTAL   = @$SLIDES;
 my $CURRENT = 0;
 
@@ -20,15 +22,13 @@ websocket '/' => sub {
     my $self = shift;
     my $tx   = $self->tx;
 
-    my $is_logged_in = $self->stash('logged_in');
-
     my $cid = _get_id($self);
 
     $CLIENTS->{$cid} = $tx;
 
     my $total_clients = keys %$CLIENTS;
     my $ip            = $tx->remote_address;
-    app->log->debug("Client '$ip' connected [$total_clients]");
+    app->log->debug("Client '$ip/$cid' connected [$total_clients]");
 
     _send_message(
         $self,
@@ -38,6 +38,7 @@ websocket '/' => sub {
     );
 
     my $slide = _get_slide($CURRENT);
+    $slide->{title} = 'Presentation';
     $slide->{content} ||= <<EOF;
 Presentation is not yet started.
 EOF
@@ -108,6 +109,12 @@ EOF
 get '/' => sub {
     my $self = shift;
 
+    my $url = $self->req->url->base->clone;
+    $url->scheme($self->req->is_secure ? 'wss' : 'ws');
+    $url->query->params([]);
+
+    $self->stash(websocket_url => $url->to_abs);
+
     $self->stash(speaker => _is_speaker($self));
 } => 'index';
 
@@ -126,14 +133,20 @@ sub _get_id {
     my $self = shift;
 
     my $tx = $self->tx;
-    return "$tx";
+    my $cid = "$tx";
+    #$cid =~ s/\(.*?\)/$1/;
+    return $cid;
 }
 
 sub _message_to_json {
     my %message = @_;
 
     my $json = Mojo::JSON->new;
-    return $json->encode({%message});
+    my $message = $json->encode({%message});
+
+    $message = Mojo::ByteStream->new($message)->decode('utf-8');
+
+    return $message;
 }
 
 sub _send_message {
@@ -156,14 +169,7 @@ sub _send_message_to_other {
         my $player = $CLIENTS->{$cid};
 
         # If player is connected
-        if ($player && $player->{tx}) {
-            $CLIENTS->{$cid}->{tx}->send_message($message);
-        }
-
-        # Cleanup disconnected player
-        else {
-            delete $CLIENTS->{$cid};
-        }
+        $player->send_message($message) if $player;
     }
 }
 
@@ -180,23 +186,20 @@ sub _read_slides {
       or die "Can't read slides from $filename: $!";
     my $slurp = do { local $/; <$file> };
 
-    $slurp .= '[[[ ]]]';
+    $slurp .= '@';
+
+    my $m = Text::Markdown->new;
 
     my @slides;
-    while ($slurp =~ s/\[\[\[(.*?)\]\]\](.*?)(?=\[\[\[)//s) {
-        my $name    = $1;
-        my $content = $2;
-
-        $name =~ s/^\s+//;
-        $name =~ s/\s+$//;
+    while ($slurp =~ s/\@(.*?)(?=\@)//s) {
+        my $content = $1;
 
         $content =~ s/^\s+//;
         $content =~ s/\s+$//;
 
         my $slide = {};
 
-        $slide->{name}    = $name;
-        $slide->{content} = $content;
+        $slide->{content} = $m->markdown($content);
 
         push @slides, $slide;
     }
@@ -217,10 +220,10 @@ sub _get_slide {
 
 
 # see script/flash-policy-server
-print
-  "Remember, you need to also run script/flash-policy-server as root for this to work...\n";
+#print
+#  "Remember, you need to also run script/flash-policy-server as root for this to work...\n";
 
-app->start;
+app->start('daemon');
 
 1;
 
@@ -235,11 +238,12 @@ make sure you have Flash<br />
 installed. It is used as workaround.
 
 @@ layouts/wrapper.html.ep
-% my $url = $self->req->url->to_abs->scheme($self->req->is_secure ? 'wss' : 'ws')->path('/');
 <!doctype html><html>
     <head>
         <title>Presentation</title>
+        <link rel="stylesheet" href="/960/reset.css" type="text/css" />
         <link rel="stylesheet" href="/main.css" type="text/css" />
+
         <script type="text/javascript" src="/jquery.min.js"></script>
         <script type="text/javascript" src="/jquery.json.min.js"></script>
         <script type="text/javascript" src="/websocketPresentation.js"></script>
@@ -261,7 +265,7 @@ installed. It is used as workaround.
 
             $(document).ready(function() {
                 $('#slide').websocketPresentation({
-                    "url":"<%= $url %>",
+                    "url":"<%= stash 'websocket_url' %>",
                     "speaker":"<%= stash 'speaker' %>"
                 });
             });

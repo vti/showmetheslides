@@ -52,7 +52,7 @@
                 };
 
                 if (o.speaker) {
-                    $(document).keypress(function(e) {
+                    $(document).keydown(function(e) {
                         var code = (e.keyCode ? e.keyCode : e.which);
 
                         // Right Arrow or Space
