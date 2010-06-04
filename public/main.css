@@ -1,5 +1,5 @@
 body {
-    background: url('/bg.jpg');
+    background:url("/bg.jpg") no-repeat scroll center center #DDDDDD;
 }
 
 .container, html, body {
