@@ -298,16 +298,12 @@ installed. It is used as workaround.
                     "speaker":"<%= stash 'speaker' %>"
                 });
 
-                $('#chat').websocketChat({"url":"<%= stash 'websocket_chat_url' %>"});
+                $('#chat-window').websocketChat({"url":"<%= stash 'websocket_chat_url' %>"});
 
-                JQuery('#websocket-chat-input').bind('keypress', function(e) {
-                    e.stopPropagation();
+                $('#toggle').click(function() {
+                    $('#chat-window').toggle();
+                    return false;
                 });
-
-                JQuery('#websocket-chat-input').bind('keydown', function(e) {
-                    e.stopPropagation();
-                });
-
             });
         </script>
     </head>
@@ -317,7 +313,10 @@ installed. It is used as workaround.
             slides: <span id="websocket-presentation-current">n/a</span> / 
             <span id="websocket-presentation-total">n/a</span>
         </div>
-        <div id="chat"></div>
+        <div id="chat">
+            <div id="chat-menu"><a href="" id="toggle">Chat</a></div>
+            <div id="chat-window"></div>
+        </div>
         <div class="container">
             <table border="0" height="100%" style="margin:auto">
             <tr><td style="vertical-align:middle">

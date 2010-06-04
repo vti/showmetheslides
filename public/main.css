@@ -1,4 +1,5 @@
 body {
+    overflow: hidden;
     background:url("/bg.jpg") no-repeat scroll center center #DDDDDD;
 }
 
@@ -63,10 +64,29 @@ pre {
     z-index:2;
 }
 
+#chat-menu {
+    border-bottom:1px solid #333;
+}
+
+#chat-menu > a:link, a:hover, a:visited {
+    color:#333;
+    text-decoration:none;
+}
+
 .center {
     text-align:center;
 }
 
 .small {
     font-size:small;
+}
+
+#websocket-chat-log {
+    height:100px;
+    width: 400px;
+    overflow: auto;
+}
+
+#websocket-chat-input {
+    width:380px;
 }

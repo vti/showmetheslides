@@ -53,9 +53,9 @@
 
                     chat.html('');
                     chat.append('<div id="websocket-chat"></div>');
-                    $('#websocket-chat').append('<pre id="websocket-chat-log" style="height:50px; width: 400px; overflow: auto;"></pre>');
+                    $('#websocket-chat').append('<pre id="websocket-chat-log"></pre>');
 
-                    $('#websocket-chat').append('<form id="websocket-chat-form"><input id="websocket-chat-input" style="width:380px" /></form>');
+                    $('#websocket-chat').append('<form id="websocket-chat-form"><input id="websocket-chat-input" /></form>');
 
                     $('#websocket-chat-input').bind('keypress', function(e) {
                         e.stopPropagation();
