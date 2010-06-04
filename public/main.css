@@ -34,6 +34,7 @@ h3 {
 }
 
 pre {
+    font: 12px "Lucida Grande", "Trebuchet MS", Verdana, sans-serif;
     width:80%;
     margin:auto;
     text-align:left;

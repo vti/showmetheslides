@@ -69,7 +69,12 @@
                         var message = $('#websocket-chat-input').val().substring(0, 140);
                         $('#websocket-chat-input').val('');
                         if (message && message != '') {
-                            ws.send($.toJSON({"text" : chat.toUTF(message)}));
+                            if (window.chrome) {
+                                ws.send($.toJSON({"text" : message}));
+                            }
+                            else {
+                                ws.send($.toJSON({"text" : chat.toUTF(message)}));
+                            }
                         }
                         return false;
                     });
