@@ -5,6 +5,7 @@ use lib "$FindBin::Bin/mojo/lib";
 use lib "$FindBin::Bin/mojolicious-plugin-websocket-chat/lib";
 
 use Mojo::ByteStream;
+use Mojo::IOLoop;
 use Mojo::JSON;
 use Mojolicious::Lite;
 use Text::Markdown;
@@ -12,7 +13,7 @@ use Text::Markdown;
 my $slides_file = pop @ARGV;
 
 my $config =
-  plugin 'json_config' => {default => {password => '123456'}};
+  plugin 'json_config' => {default => {password => '123456', slideshow => 0}};
 
 plugin 'web_socket-chat' => {path => '/chat'};
 
@@ -20,6 +21,8 @@ my $CLIENTS = {};
 my $SLIDES  = _read_slides($slides_file);
 my $TOTAL   = @$SLIDES;
 my $CURRENT = 0;
+
+my $loop = Mojo::IOLoop->singleton;
 
 websocket '/' => sub {
     my $self = shift;
@@ -49,6 +52,16 @@ EOF
 
     _send_message_to_all($self, type => 'status', clients => $total_clients);
 
+    if ($config->{slideshow}) {
+        my $cb; $cb = sub {
+
+            _next_slide($self);
+
+            $loop->timer($config->{slideshow} => $cb);
+        };
+        $loop->timer($config->{slideshow} => $cb);
+    }
+
     $self->receive_message(
         sub {
             my ($self, $message) = @_;
@@ -63,31 +76,17 @@ EOF
             if (_is_speaker($self)) {
                 app->log->debug("Message '$action' from manager received");
 
-                my $slide;
                 if ($action eq 'first') {
-                    $CURRENT = 1;
-                    $slide   = _get_slide($CURRENT);
+                    _first_slide($self);
                 }
                 elsif ($action eq 'last') {
-                    $CURRENT = $TOTAL;
-                    $slide   = _get_slide($TOTAL);
+                    _last_slide($self);
                 }
                 elsif ($action eq 'next') {
-                    $CURRENT++ unless $CURRENT >= $TOTAL;
-                    $slide = _get_slide($CURRENT);
+                    _next_slide($self);
                 }
                 elsif ($action eq 'prev') {
-                    $CURRENT-- unless $CURRENT <= 1;
-                    $slide = _get_slide($CURRENT);
-                }
-
-                if ($slide) {
-                    _send_message_to_all(
-                        $self,
-                        type    => 'status',
-                        current => $CURRENT
-                    );
-                    _send_message_to_all($self, type => 'slide', %$slide);
+                    _prev_slide($self);
                 }
             }
         }
@@ -144,6 +143,53 @@ get '/logout' => sub {
 
     return $self->redirect_to('/');
 };
+
+sub _first_slide {
+    my $self = shift;
+
+    $CURRENT = 1;
+    my $slide   = _get_slide($CURRENT);
+
+    _send_slide($self);
+}
+
+sub _last_slide {
+    my $self = shift;
+
+    $CURRENT = $TOTAL - 1;
+    my $slide   = _get_slide($CURRENT);
+
+    _send_slide($self);
+}
+
+sub _prev_slide {
+    my $self = shift;
+
+    $CURRENT = $CURRENT <= 1 ? $TOTAL - 1 : $CURRENT - 1;
+    my $slide = _get_slide($CURRENT);
+    _send_slide($self, $slide);
+}
+
+sub _next_slide {
+    my $self = shift;
+
+    $CURRENT = $CURRENT >= $TOTAL ? 1 : $CURRENT + 1;
+    my $slide = _get_slide($CURRENT);
+    _send_slide($self, $slide);
+}
+
+sub _send_slide {
+    my ($self, $slide) = @_;
+
+    if ($slide) {
+        _send_message_to_all(
+            $self,
+            type    => 'status',
+            current => $CURRENT
+        );
+        _send_message_to_all($self, type => 'slide', %$slide);
+    }
+}
 
 sub _is_speaker {
     my $self = shift;
@@ -214,7 +260,7 @@ sub _read_slides {
     my $m = Text::Markdown->new;
 
     my @slides;
-    while ($slurp =~ s/\@(.*?)(?=\@)//s) {
+    while ($slurp =~ s/^\@(.*?)(?=^\@)//ms) {
         my $content = $1;
 
         $content =~ s/^\s+//;
@@ -299,7 +345,7 @@ installed. It is used as workaround.
                 });
 
                 $('#chat-window').websocketChat({"url":"<%= stash 'websocket_chat_url' %>"});
-
+                $('#chat-window').hide();
                 $('#toggle').click(function() {
                     $('#chat-window').toggle();
                     return false;

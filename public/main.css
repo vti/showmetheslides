@@ -34,7 +34,7 @@ h3 {
 }
 
 pre {
-    font: 12px "Lucida Grande", "Trebuchet MS", Verdana, sans-serif;
+    font: 18px "Lucida Grande", "Trebuchet MS", Verdana, sans-serif;
     width:80%;
     margin:auto;
     text-align:left;
@@ -65,6 +65,10 @@ pre {
     z-index:2;
 }
 
+#chat pre {
+    font-size:12px;
+}
+
 #chat-menu {
     border-bottom:1px solid #333;
 }
@@ -90,4 +94,9 @@ pre {
 
 #websocket-chat-input {
     width:380px;
+}
+
+.two-column {
+    -webkit-column-count: 2;
+    -moz-column-count: 2;
 }
