@@ -18,7 +18,7 @@ my $config =
 plugin 'web_socket-chat' => {path => '/chat'};
 
 my $CLIENTS = {};
-my $SLIDES  = _read_slides($slides_file);
+my ($METADATA, $SLIDES)  = _read_slides($slides_file);
 my $TOTAL   = @$SLIDES;
 my $CURRENT = 0;
 
@@ -51,16 +51,6 @@ EOF
     _send_message($self, type => 'slide', %$slide);
 
     _send_message_to_all($self, type => 'status', clients => $total_clients);
-
-    if ($config->{slideshow}) {
-        my $cb; $cb = sub {
-
-            _next_slide($self);
-
-            $loop->timer($config->{slideshow} => $cb);
-        };
-        $loop->timer($config->{slideshow} => $cb);
-    }
 
     $self->receive_message(
         sub {
@@ -119,6 +109,9 @@ get '/' => sub {
     $self->stash(websocket_chat_url => $url->path('/chat')->to_abs);
 
     $self->stash(speaker => _is_speaker($self));
+
+    $self->stash(header => $METADATA->{header});
+    $self->stash(footer => $METADATA->{footer});
 } => 'index';
 
 any '/login' => sub {
@@ -187,7 +180,13 @@ sub _send_slide {
             type    => 'status',
             current => $CURRENT
         );
+
         _send_message_to_all($self, type => 'slide', %$slide);
+
+        if ($config->{slideshow}) {
+            $loop->timer(
+                $config->{slideshow} => sub { _next_slide($self) });
+        }
     }
 }
 
@@ -257,6 +256,14 @@ sub _read_slides {
 
     $slurp .= '@';
 
+    my $metadata = {};
+    if ($slurp =~ s/^(.*?)\s*(?=@)//s) {
+        foreach (split /\n/ => $1) {
+            my ($name, $value) = ($_ =~ m/(.*?):(.*)/);
+            $metadata->{lc $name} = $value;
+        }
+    }
+
     my $m = Text::Markdown->new;
 
     my @slides;
@@ -273,7 +280,7 @@ sub _read_slides {
         push @slides, $slide;
     }
 
-    return \@slides;
+    return ($metadata, \@slides);
 }
 
 sub _get_slide {
@@ -354,6 +361,11 @@ installed. It is used as workaround.
         </script>
     </head>
     <body>
+% if (my $header = stash 'header') {
+        <div id="header">
+        <%== $header %>
+        </div>
+% }
         <div id="status">
             clients: <span id="websocket-presentation-clients">n/a</span><br />
             slides: <span id="websocket-presentation-current">n/a</span> / 
@@ -372,5 +384,10 @@ installed. It is used as workaround.
             </td></tr>
             </table>
         </div>
+% if (my $footer = stash 'footer') {
+        <div id="footer">
+        <%== $footer %>
+        </div>
+% }
     </body>
 </html>

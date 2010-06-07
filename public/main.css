@@ -55,6 +55,25 @@ pre {
     z-index:2;
 }
 
+#header,#footer {
+    color:#333;
+    text-align:center;
+    padding:0.5em;
+    position:absolute;
+    left:0px;
+    right:0px;
+    margin:auto;
+    width: 500px;
+}
+
+#header {
+    top:0px;
+}
+
+#footer {
+    bottom:0px;
+}
+
 #chat {
     background:#000;
     color:#fff;

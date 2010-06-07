@@ -12,6 +12,7 @@
             };
 
             return this.each(function() {
+                var html = this;
                 var o = options;
 
                 presentation.displayMessage('Connecting...');
@@ -32,7 +33,10 @@
                     var data = $.evalJSON(e.data);
 
                     if (data.type == 'slide') {
-                        presentation.displayMessage(data.content);
+                        $(html).fadeOut(500, function() {
+                            presentation.displayMessage(data.content);
+                            $(html).fadeIn(500);
+                        });
                     }
                     else if (data.type == 'status') {
                         if (data.clients) {
