@@ -165,7 +165,7 @@ sub _last_slide {
 sub _prev_slide {
     my $self = shift;
 
-    $CURRENT = $CURRENT <= 1 ? $TOTAL - 1 : $CURRENT - 1;
+    $CURRENT = $CURRENT <= 1 ? $TOTAL : $CURRENT - 1;
     my $slide = _get_slide($CURRENT);
     _send_slide($self, $slide);
 }
