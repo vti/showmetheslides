@@ -1,9 +1,12 @@
 [submodule "public/web-socket-js"]
 	path = public/web-socket-js
 	url = git://github.com/gimite/web-socket-js.git
-[submodule "mojo"]
-	path = mojo
+[submodule "extlib/mojo"]
+	path = extlib/mojo
 	url = git://github.com/vti/mojo.git
-[submodule "mojolicious-plugin-websocket-chat"]
-	path = mojolicious-plugin-websocket-chat
+[submodule "extlib/mojolicious-plugin-websocket-chat"]
+	path = extlib/mojolicious-plugin-websocket-chat
 	url = http://github.com/vti/mojolicious-plugin-websocket-chat.git
+[submodule "extlib/text-markdown"]
+	path = extlib/text-markdown
+	url = http://github.com/bobtfish/text-markdown.git
