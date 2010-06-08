@@ -44,6 +44,17 @@ pre {
     color:red;
 }
 
+#logo {
+    background:#000;
+    color:#fff;
+    text-align:center;
+    padding:0.5em;
+    position:absolute;
+    right:0px;
+    top:0px;
+    z-index:2;
+}
+
 #status {
     background:#000;
     color:#fff;
@@ -54,6 +65,7 @@ pre {
     top:0px;
     z-index:2;
 }
+
 
 #header,#footer {
     color:#333;

@@ -113,6 +113,7 @@ get '/' => sub {
 
     $self->stash(header => $METADATA->{header});
     $self->stash(footer => $METADATA->{footer});
+    $self->stash(logo => $METADATA->{logo});
 } => 'index';
 
 any '/login' => sub {
@@ -260,7 +261,7 @@ sub _read_slides {
     my $metadata = {};
     if ($slurp =~ s/^(.*?)\s*(?=@)//s) {
         foreach (split /\n/ => $1) {
-            my ($name, $value) = ($_ =~ m/(.*?):(.*)/);
+            my ($name, $value) = ($_ =~ m/(.*?):\s*(.*)/);
             $metadata->{lc $name} = $value;
         }
     }
@@ -372,6 +373,11 @@ installed. It is used as workaround.
             slides: <span id="websocket-presentation-current">n/a</span> / 
             <span id="websocket-presentation-total">n/a</span>
         </div>
+% if (my $logo = stash 'logo') {
+        <div id="logo">
+        <img src="<%= $logo %>" />
+        </div>
+% }
         <div id="chat">
             <div id="chat-menu"><a href="" id="toggle">Chat</a></div>
             <div id="chat-window"></div>
